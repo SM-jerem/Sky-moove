@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monkey Jump</title>
+    <style>
+        #game-container {
+            position: relative;
+            width: 600px;
+            height: 300px;
+            border: 1px solid black;
+            display: flex;
+        }
+
+        #monkey {
+            position: absolute;
+            bottom: 0;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            background-color: yellow;
+        }
+
+        .banana-peel {
+            position: absolute;
+            bottom: 20px;
+            left: 600px;
+            width: 20px;
+            height: 20px;
+            background-color: brown;
+            border-radius: 50%;
+        }
+
+        #play-button {
+            margin-top: 10px;
+        }
+
+        #retry-button {
+            display: none;
+            position: absolute;
+            top: 75%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 10px 20px;
+            font-size: 20px;
+            background-color: #f7ac1f;
+            border: none;
+            border-radius: 5px;
+            color: rgb(245, 248, 231);
+            cursor: pointer;
+        }
+
+        #game-over-message {
+            display: none;
+            position: absolute;
+            top: calc(60% + 20px);
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 10px 70px;
+            font-size: 24px;
+            background-color: rgba(255, 0, 0, 0.5);
+            color: white;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        #score-container {
+            display: block;
+            position: absolute;
+            top: 15px;
+            right: 450px; /* Ajustement de la position vers la droite */
+            padding: 10px 20px;
+            font-size: 24px;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            border-radius: 5px;
+        }
+
+        #score-board {
+            display: none;
+            position: absolute;
+            top: 15px;
+            left: 150px; /* Ajustement de la position vers la gauche */
+            padding: 10px 20px;
+            font-size: 24px;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="monkey"></div>
+    </div>
+    <button id="play-button">Play</button>
+    <button id="retry-button">Retry</button>
+    <div id="game-over-message">Game Over</div>
+    <div id="score-container">Score: <span id="score">0</span></div>
+    <div id="score-board"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const monkey = document.getElementById('monkey');
+            const gameContainer = document.getElementById('game-container');
+            const playButton = document.getElementById('play-button');
+            const retryButton = document.getElementById('retry-button');
+            const scoreDisplay = document.getElementById('score');
+            const gameOverMessage = document.getElementById('game-over-message');
+            const scoreBoard = document.getElementById('score-board');
+
+            let isJumping = false;
+            let gravity = 1;
+            let score = 0;
+            let bestScores = [];
+            let bananas = [];
+            let gameInterval;
+            let isGameOver = false;
+
+            playButton.addEventListener('click', startGame);
+
+            function startGame() {
+                isGameOver = false;
+                playButton.disabled = true;
+                monkey.style.bottom = '0px';
+                score = 0;
+                updateScore();
+                createBanana();
+                gameInterval = setInterval(createBananaWithRandomInterval, 2000);
+                document.addEventListener('keydown', handleJump);
+                gameOverMessage.style.display = 'none';
+                scoreDisplay.style.display = 'block';
+                scoreBoard.style.display = 'block';
+            }
+
+            function createBananaWithRandomInterval() {
+                createBanana();
+                clearInterval(gameInterval);
+                gameInterval = setInterval(createBananaWithRandomInterval, Math.floor(Math.random() * 1500) + 1300);
+            }
+
+            function createBanana() {
+                const bananaPeel = document.createElement('div');
+                bananaPeel.classList.add('banana-peel');
+                gameContainer.appendChild(bananaPeel);
+                bananas.push(bananaPeel);
+                moveBananaPeel(bananaPeel);
+            }
+
+            function jump() {
+                if (!isJumping) {
+                    isJumping = true;
+                    let position = 0;
+                    const jumpInterval = setInterval(() => {
+                        if (position >= 150) {
+                            clearInterval(jumpInterval);
+                            const fallInterval = setInterval(() => {
+                                if (position === 0) {
+                                    clearInterval(fallInterval);
+                                    isJumping = false;
+                                } else {
+                                    position -= 5 * gravity;
+                                    monkey.style.bottom = position + 'px';
+                                }
+                            }, 20);
+                        } else {
+                            position += 5 * gravity;
+                            monkey.style.bottom = position + 'px';
+                        }
+                    }, 20);
+                }
+            }
+
+            function handleJump(event) {
+                if (event.code === 'Space') {
+                    jump();
+                }
+            }
+
+            function moveBananaPeel(bananaPeel) {
+                let position = 600;
+                const moveInterval = setInterval(() => {
+                    position -= 2;
+                    bananaPeel.style.left = position + 'px';
+                    if (position <= 0) {
+                        clearInterval(moveInterval);
+                        bananaPeel.remove();
+                        if (!isGameOver) {
+                            score += 100;
+                            updateScore();
+                        }
+                    } else {
+                        checkCollision(bananaPeel);
+                    }
+                }, 20);
+            }
+
+            function checkCollision(bananaPeel) {
+                const monkeyRect = monkey.getBoundingClientRect();
+                const bananaRect = bananaPeel.getBoundingClientRect();
+                if (!(monkeyRect.right < bananaRect.left || 
+                    monkeyRect.left > bananaRect.right || 
+                    monkeyRect.bottom < bananaRect.top || 
+                    monkeyRect.top > bananaRect.bottom)) {
+                    gameOver();
+                }
+            }
+
+            function gameOver() {
+                clearInterval(gameInterval);
+                bananas.forEach(banana => banana.remove());
+                isGameOver = true;
+                gameOverMessage.style.display = 'block';
+                retryButton.style.display = 'block';
+                updateBestScores(score);
+                showScore();
+            }
+
+            retryButton.addEventListener('click', restartGame);
+
+            function restartGame() {
+                monkey.style.bottom = '0px';
+                retryButton.style.display = 'none';
+                playButton.disabled = false;
+                startGame();
+            }
+
+            function updateScore() {
+                scoreDisplay.textContent = score;
+            }
+
+            function updateBestScores(score) {
+                if (bestScores.length < 3 || score > bestScores[2]) {
+                    bestScores.push(score);
+                    bestScores.sort((a, b) => b - a);
+                    bestScores = bestScores.slice(0, 3);
+                    updateScoreBoard();
+                }
+            }
+
+            function updateScoreBoard() {
+                scoreBoard.innerHTML = 'Best Scores:<br>';
+                bestScores.forEach((score, index) => {
+                    scoreBoard.innerHTML += `${index + 1}. ${score}<br>`;
+                });
+            }
+
+            function showScore() {
+                scoreDisplay.style.display = 'none';
+                gameOverMessage.textContent = `Your Score: ${score}`;
+            }
+        });
+    </script>
+</body>
+</html>
